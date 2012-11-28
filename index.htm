@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>TrafficSigns</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <!--Сторонние библиотеки-->
+    <script src="http://api-maps.yandex.ru/1.1/index.xml?key=ANpUFEkBAAAAf7jmJwMAHGZHrcKNDsbEqEVjEUtCmufxQMwAAAAAAAAAAAAvVrubVT4btztbduoIgTLAeFILaQ==" type="text/javascript"></script>
+    <script src="extlibs/jquery-1.8.3.js" type="text/javascript"></script>
+    <script src="extlibs/jquery-ui-1.9.2/js/jquery-ui-1.9.2.custom.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.9.1/themes/base/jquery-ui.css" />
+
+    <!--Данные о знаках-->
+    <script type="text/javascript" src="data.js"></script>
+
+    <script type="text/javascript">
+
+        // Класс, выполняющий роль контекста для обработчика событий
+        function MyApplication() {
+
+            coords = null;
+
+            // Создание экземпляра карты и его привязка к созданному контейнеру
+            this.map = new YMaps.Map(YMaps.jQuery("#YMapsId")[0], { propagateEvents: true });
+
+            // Опции карты
+            this.map.setCenter(new YMaps.GeoPoint(36.729725, 55.381768), 17);
+            this.map.addControl(new YMaps.Zoom());
+
+            //выставляем дефолтные координаты
+            if (navigator.geolocation && false) { //заглушка, чтобы каждый раз не запрашивать у пользователя локацию
+                navigator.geolocation.getCurrentPosition(
+                        function (position) {
+                            map.setCenter(new YMaps.GeoPoint(position.coords.longitude, position.coords.latitude), 10)
+                        });
+            };
+
+            //добавление объекта на карту
+            this.addSign = function (obj) {
+                // Создание стиля для значка метки
+                var s = new YMaps.Style();
+                s.iconStyle = new YMaps.IconStyle();
+                s.iconStyle.href = obj.draggable.attr("src");
+                s.iconStyle.size = new YMaps.Point(20, 20);
+                s.iconStyle.offset = new YMaps.Point(-9, -29);
+
+                // Создание метки и добавление ее на карту
+                //var placemark = new YMaps.Placemark(coords, { style: s, draggable: true });
+                var placemark = new YMaps.Placemark(this.map.converter.clientPixelsToCoordinates(coords), { style: s, draggable: true })
+                this.map.addOverlay(placemark);
+            };
+
+            // При перемещении обновляем координаты
+            YMaps.Events.observe(this.map, this.map.Events.MouseMove, function (map, e) {
+                //coords = e.getGeoPoint();
+                coords = map.converter.coordinatesToClientPixels(e.getGeoPoint());
+            });
+        };
+
+        // Создание обработчика для события window.onLoad
+        YMaps.jQuery(function () {
+            //создаем контекст
+            var application = new MyApplication();
+
+            //создаем меню знаков
+            var d = $("#SignsId");
+            $.each(signs, function (i, sign) {
+                d.append("<img src = " + sign.img + " width=20 />");
+                d.append("&nbsp;");
+            });
+
+            var dragObjects = document.getElementById('SignsId').getElementsByTagName('img')
+
+            $(dragObjects).draggable({
+                revert: 'invalid',
+                revertDuration: 0,
+                zIndex: 2,
+                start: function (event, obj) {
+                    //сохраняем текущее положение
+                    $(this).data('startPosition', $(this).position());
+                    $(this).data('startOffset', $(this).offset());
+                },
+
+                stop: function (event, obj) {
+                    //возвращаем исходное положение
+                    $(this).position($(this).data('startPosition'));
+                    $(this).offset($(this).data('startOffset'));
+                }
+            });
+
+            $("#YMapsId").droppable({
+                drop: function (event, obj) {
+                    //добавляем элемент на карту
+                    application.addSign(obj);
+                },
+            });
+
+        });
+
+    </script>
+</head>
+<body>
+    <div id="SignsId" style="z-index: 30;">
+    </div>
+    <div id="YMapsId" style="width: 1200px; height: 800px">
+    </div>
+</body>
+</html>
